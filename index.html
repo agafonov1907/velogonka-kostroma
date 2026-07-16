@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+  />
+
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="color-scheme" content="light" />
+
+  <title>Контрольные пункты велосипедных маршрутов</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --app-height: 100dvh;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+
+      --panel-peek: 86px;
+      --panel-radius: 24px;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: var(--app-height);
+      min-height: var(--app-height);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+    }
+
+    .app {
+      width: 100%;
+      height: var(--app-height);
+      min-height: var(--app-height);
+      display: grid;
+      grid-template-columns: 370px 1fr;
+    }
+
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      padding: 16px;
+      overflow-y: auto;
+      z-index: 900;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .sidebar h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin: 0 0 16px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .info-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .info-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .actions {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .main-btn {
+      width: 100%;
+      min-height: 44px;
+      border: none;
+      border-radius: 12px;
+      background: #111827;
+      color: #ffffff;
+      padding: 11px 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .main-btn.secondary {
+      background: #2563eb;
+    }
+
+    .section-title {
+      margin: 18px 0 8px;
+      font-size: 16px;
+    }
+
+    .route-legend {
+      margin-bottom: 14px;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .route-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 6px 0;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .route-item:hover {
+      opacity: 0.75;
+    }
+
+    .route-item.active {
+      font-weight: 800;
+    }
+
+    .route-color {
+      width: 24px;
+      height: 5px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .cp-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .cp-item {
+      min-height: 44px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      background: #ffffff;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .cp-item:hover {
+      background: #f9fafb;
+      border-color: #2563eb;
+    }
+
+    .cp-name {
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .cp-desc {
+      color: #4b5563;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .cp-coords {
+      margin-top: 6px;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .poster-link {
+      display: block;
+      min-height: 44px;
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      background: #111827;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .note {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+
+    #map {
+      width: 100%;
+      height: var(--app-height);
+      min-height: var(--app-height);
+    }
+
+    .mobile-toggle {
+      display: none;
+    }
+
+    .map-locate-btn {
+      position: fixed;
+      right: calc(12px + var(--safe-right));
+      top: calc(12px + var(--safe-top));
+      z-index: 800;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 14px;
+      background: #ffffff;
+      color: #111827;
+      font-size: 22px;
+      font-weight: 800;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      cursor: pointer;
+    }
+
+    .cp-marker {
+      border: 3px solid #ffffff;
+      border-radius: 999px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 13px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+      transform: translate(-50%, -50%);
+      user-select: none;
+    }
+
+    @media (max-width: 900px), (pointer: coarse) {
+      .app {
+        display: block;
+        width: 100%;
+        height: var(--app-height);
+      }
+
+      #map {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: var(--app-height);
+      }
+
+      .sidebar {
+        position: fixed;
+        left: max(8px, var(--safe-left));
+        right: max(8px, var(--safe-right));
+        bottom: max(8px, var(--safe-bottom));
+
+        width: auto;
+        height: min(72vh, calc(var(--app-height) * 0.72));
+        max-height: calc(var(--app-height) - var(--safe-top) - 16px);
+
+        padding: 10px 14px calc(16px + var(--safe-bottom));
+        border-right: none;
+        border-top: 1px solid #e5e7eb;
+        border-radius: var(--panel-radius);
+
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+
+        box-shadow:
+          0 -10px 35px rgba(15, 23, 42, 0.18),
+          0 0 0 1px rgba(255, 255, 255, 0.65);
+
+        transform: translateY(calc(100% - var(--panel-peek)));
+        transition:
+          transform 0.25s ease,
+          height 0.25s ease,
+          border-radius 0.25s ease;
+
+        z-index: 1000;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .sidebar.open {
+        transform: translateY(0);
+      }
+
+      .sidebar.full {
+        height: calc(var(--app-height) - var(--safe-top) - max(8px, var(--safe-bottom)) - 8px);
+        border-radius: 22px 22px 16px 16px;
+        transform: translateY(0);
+      }
+
+      .mobile-toggle {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 34px;
+        margin: -2px 0 6px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .mobile-toggle::before {
+        content: "";
+        width: 46px;
+        height: 5px;
+        border-radius: 999px;
+        background: #d1d5db;
+      }
+
+      .sidebar h1 {
+        margin-top: 0;
+        font-size: 18px;
+      }
+
+      .subtitle {
+        margin-bottom: 12px;
+        font-size: 13px;
+      }
+
+      .info-card {
+        padding: 10px;
+        margin-bottom: 10px;
+        font-size: 13px;
+      }
+
+      .actions {
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .route-legend {
+        margin-bottom: 10px;
+        padding: 10px;
+      }
+
+      .route-item {
+        font-size: 14px;
+      }
+
+      .route-color {
+        width: 28px;
+        height: 5px;
+      }
+
+      .section-title {
+        margin: 14px 0 8px;
+        font-size: 15px;
+      }
+
+      .cp-list {
+        gap: 8px;
+        padding-bottom: 20px;
+      }
+
+      .cp-name {
+        font-size: 14px;
+      }
+
+      .cp-desc {
+        font-size: 13px;
+      }
+
+      .cp-coords {
+        font-size: 11px;
+      }
+
+      .poster-link {
+        margin-top: 12px;
+      }
+
+      .note {
+        padding-bottom: 12px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      :root {
+        --panel-peek: 82px;
+      }
+
+      .sidebar {
+        left: max(6px, var(--safe-left));
+        right: max(6px, var(--safe-right));
+        bottom: max(6px, var(--safe-bottom));
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .sidebar h1 {
+        font-size: 17px;
+      }
+
+      .main-btn {
+        font-size: 14px;
+      }
+    }
+
+    @media (max-width: 900px) and (orientation: landscape) {
+      :root {
+        --panel-peek: 72px;
+      }
+
+      .sidebar {
+        left: auto;
+        width: min(390px, 46vw);
+        height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 16px);
+        transform: translateX(calc(100% - 74px));
+      }
+
+      .sidebar.open,
+      .sidebar.full {
+        transform: translateX(0);
+      }
+
+      .mobile-toggle {
+        height: 30px;
+      }
+    }
+
+    html.miniapp .poster-link {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <button class="mobile-toggle" id="mobileToggle" aria-label="Открыть панель"></button>
+
+      <h1>Контрольные пункты</h1>
+      <p class="subtitle">Карта КП велосипедных маршрутов</p>
+
+      <div class="info-card">
+        <strong>Время работы контрольных пунктов</strong>
+        с 10:00 до 14:00
+      </div>
+
+      <div class="actions">
+        <button class="main-btn" id="showAllBtn">Показать все маршруты</button>
+        <button class="main-btn secondary" id="locateBtn">Показать моё местоположение</button>
+      </div>
+
+      <div class="route-legend">
+        <strong style="margin-bottom: 8px; display: block;">Маршруты:</strong>
+
+        <div class="route-item" data-route="route1">
+          <div class="route-color" style="background: #ef4444;"></div>
+          <span>Маршрут №1 — 9 км</span>
+        </div>
+
+        <div class="route-item" data-route="route2">
+          <div class="route-color" style="background: #f97316;"></div>
+          <span>Маршрут №2 — 12,5 км</span>
+        </div>
+
+        <div class="route-item" data-route="route3">
+          <div class="route-color" style="background: #eab308;"></div>
+          <span>Маршрут №3 — 14,5 км</span>
+        </div>
+
+        <div class="route-item" data-route="route4">
+          <div class="route-color" style="background: #22c55e;"></div>
+          <span>Маршрут №4 — 23,5 км</span>
+        </div>
+
+        <div class="route-item" data-route="route5">
+          <div class="route-color" style="background: #3b82f6;"></div>
+          <span>Маршрут №5 — 27,5 км</span>
+        </div>
+
+        <div class="route-item" data-route="route6">
+          <div class="route-color" style="background: #a855f7;"></div>
+          <span>Маршрут №6 — 30 км</span>
+        </div>
+      </div>
+
+      <h2 class="section-title">Список КП</h2>
+      <div class="cp-list" id="cpList"></div>
+
+      <a
+        class="poster-link"
+        href="https://cloud.armgs.team/public/R6sf/mrV5q6GNe"
+        target="_blank"
+        rel="noopener"
+      >
+        Открыть афишу
+      </a>
+
+      <p class="note">
+        На карте отображаются контрольные пункты и велосипедные маршруты.
+      </p>
+    </aside>
+
+    <main id="map"></main>
+    <button class="map-locate-btn" id="mapLocateBtn" aria-label="Показать моё местоположение">◎</button>
+  </div>
+
+  <!-- ВАЖНО: замените ВАШ_API_КЛЮЧ_ЯНДЕКС_КАРТ на реальный ключ -->
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=8d9d84a6-806a-4e88-8dd5-3bb3eda9a494&lang=ru_RU"></script>
+
+  <script>
+    function setAppHeight() {
+      const height = window.visualViewport
+        ? window.visualViewport.height
+        : window.innerHeight;
+
+      document.documentElement.style.setProperty("--app-height", `${height}px`);
+    }
+
+    setAppHeight();
+
+    window.addEventListener("resize", setAppHeight);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", setAppHeight);
+      window.visualViewport.addEventListener("scroll", setAppHeight);
+    }
+
+    const isProbablyMiniApp =
+      /MAX|MaxApp|WebView|wv/i.test(navigator.userAgent) ||
+      window.navigator.standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
+
+    document.documentElement.classList.toggle("miniapp", isProbablyMiniApp);
+
+    function isMobileLayout() {
+      return window.matchMedia("(max-width: 900px), (pointer: coarse)").matches;
+    }
+
+    const checkpoints = [
+      {
+        id: "КП-1",
+        title: "Старт / финиш",
+        description: "Пересечение ул. Радиозаводская и Студенческого проезда, г. Кострома.",
+        lat: 57.729249,
+        lng: 40.912054
+      },
+      {
+        id: "КП-2",
+        title: "Лесной массив Малышково",
+        description: "Пересечение трассы в лесном массиве Малышково с автодорогой к д. Середняя.",
+        lat: 57.693692,
+        lng: 40.899890
+      },
+      {
+        id: "КП-3",
+        title: "Мостик через р. Кубань",
+        description: "Металлический анкерный мостик через реку Кубань.",
+        lat: 57.680837,
+        lng: 40.903657
+      },
+      {
+        id: "КП-4",
+        title: "Вершина подъёма",
+        description: "Вершина подъёма с выходом на поле.",
+        lat: 57.675636,
+        lng: 40.897405
+      },
+      {
+        id: "КП-5",
+        title: "Перевал у с. Ильинское",
+        description: "Перевал у села Ильинское с поворотом налево и спуском в сторону деревни Ивакино.",
+        lat: 57.650425,
+        lng: 40.932929
+      },
+      {
+        id: "КП-6",
+        title: "Деревня Ивакино",
+        description: "Контрольный пункт в деревне Ивакино.",
+        lat: 57.668129,
+        lng: 40.924719
+      },
+      {
+        id: "КП-7",
+        title: "Экоздравица «Сосновый Бор»",
+        description: "Экоздравица «Сосновый Бор», кафе.",
+        lat: 57.666500,
+        lng: 40.940627
+      }
+    ];
+
+    const segment12 = [
+      [57.729249, 40.912054],
+      [57.728675, 40.912922],
+      [57.727891, 40.912028],
+      [57.727020, 40.911466],
+      [57.726713, 40.910879],
+      [57.725563, 40.911421],
+      [57.725077, 40.912051],
+      [57.724445, 40.912146],
+      [57.724122, 40.912038],
+      [57.724013, 40.912182],
+      [57.722631, 40.912826],
+      [57.720686, 40.911686],
+      [57.720291, 40.911959],
+      [57.720125, 40.911464],
+      [57.719538, 40.910699],
+      [57.717571, 40.908949],
+      [57.713142, 40.904604],
+      [57.711413, 40.903060],
+      [57.710612, 40.901914],
+      [57.709939, 40.902137],
+      [57.708244, 40.904031],
+      [57.706668, 40.907628],
+      [57.703951, 40.909044],
+      [57.702247, 40.908790],
+      [57.701147, 40.904620],
+      [57.699886, 40.904811],
+      [57.698898, 40.904413],
+      [57.697501, 40.903267],
+      [57.696478, 40.901851],
+      [57.694885, 40.900752],
+      [57.693692, 40.899890]
+    ];
+
+    const segment23 = [
+      [57.693692, 40.899890],
+      [57.692268, 40.899096],
+      [57.691442, 40.898495],
+      [57.690066, 40.897808],
+      [57.689102, 40.898066],
+      [57.687864, 40.898752],
+      [57.686625, 40.900640],
+      [57.685845, 40.903387],
+      [57.685019, 40.904846],
+      [57.683413, 40.905533],
+      [57.682496, 40.905447],
+      [57.681411, 40.904422],
+      [57.681176, 40.904079],
+      [57.680864, 40.903800],
+      [57.680837, 40.903657]
+    ];
+
+    const segment34 = [
+      [57.680837, 40.903657],
+      [57.680744, 40.903171],
+      [57.680657, 40.903020],
+      [57.681140, 40.901909],
+      [57.681168, 40.901878],
+      [57.680519, 40.901666],
+      [57.680083, 40.901444],
+      [57.679640, 40.901440],
+      [57.679496, 40.901624],
+      [57.679391, 40.901682],
+      [57.679167, 40.901440],
+      [57.678828, 40.901445],
+      [57.678759, 40.901410],
+      [57.678653, 40.901189],
+      [57.676518, 40.899416],
+      [57.676452, 40.898515],
+      [57.676334, 40.897871],
+      [57.676123, 40.897422],
+      [57.675652, 40.897396],
+      [57.675636, 40.897405]
+    ];
+
+    const segment45 = [
+      [57.675636, 40.897405],
+      [57.675087, 40.898116],
+      [57.674804, 40.898132],
+      [57.674380, 40.898411],
+      [57.673714, 40.898613],
+      [57.673098, 40.898613],
+      [57.672424, 40.899266],
+      [57.672266, 40.899312],
+      [57.673922, 40.902201],
+      [57.673839, 40.902527],
+      [57.673581, 40.902853],
+      [57.673240, 40.903008],
+      [57.672965, 40.903490],
+      [57.672507, 40.904080],
+      [57.672491, 40.904499],
+      [57.672998, 40.905695],
+      [57.673115, 40.906254],
+      [57.672832, 40.907947],
+      [57.672524, 40.909174],
+      [57.672632, 40.911472],
+      [57.672467, 40.913366],
+      [57.672315, 40.913937],
+      [57.671312, 40.914936],
+      [57.670985, 40.915007],
+      [57.669515, 40.916181],
+      [57.669379, 40.916577],
+      [57.669197, 40.918067],
+      [57.669086, 40.918289],
+      [57.669052, 40.918670],
+      [57.668925, 40.919241],
+      [57.669473, 40.920366],
+      [57.669337, 40.920747],
+      [57.669006, 40.921524],
+      [57.668952, 40.921797],
+      [57.668994, 40.922082],
+      [57.669017, 40.922342],
+      [57.668620, 40.923294],
+      [57.668165, 40.923439],
+      [57.667585, 40.922871],
+      [57.667080, 40.923042],
+      [57.666937, 40.922463],
+      [57.666650, 40.921701],
+      [57.665812, 40.920993],
+      [57.665255, 40.920950],
+      [57.664664, 40.921669],
+      [57.663907, 40.922270],
+      [57.662989, 40.923171],
+      [57.662116, 40.923815],
+      [57.660854, 40.924373],
+      [57.659568, 40.925360],
+      [57.658214, 40.926175],
+      [57.656767, 40.926647],
+      [57.655665, 40.926261],
+      [57.653920, 40.925360],
+      [57.652520, 40.924931],
+      [57.651142, 40.924459],
+      [57.649902, 40.925231],
+      [57.649213, 40.926776],
+      [57.649321, 40.927914],
+      [57.649408, 40.928530],
+      [57.649493, 40.928708],
+      [57.649568, 40.929214],
+      [57.649536, 40.929729],
+      [57.649561, 40.930152],
+      [57.649618, 40.930455],
+      [57.649610, 40.930719],
+      [57.649550, 40.930998],
+      [57.649225, 40.931982],
+      [57.649613, 40.932025],
+      [57.649640, 40.932039],
+      [57.650086, 40.932714],
+      [57.650339, 40.932923],
+      [57.650425, 40.932929]
+    ];
+
+    const segment56 = [
+      [57.650433, 40.932929],
+      [57.650642, 40.932570],
+      [57.650795, 40.932510],
+      [57.651055, 40.932662],
+      [57.651550, 40.932810],
+      [57.652409, 40.933314],
+      [57.652614, 40.933338],
+      [57.652904, 40.933110],
+      [57.653621, 40.932078],
+      [57.654136, 40.931634],
+      [57.655257, 40.930188],
+      [57.655451, 40.930053],
+      [57.656373, 40.929832],
+      [57.657788, 40.929411],
+      [57.657970, 40.929252],
+      [57.658179, 40.929178],
+      [57.659516, 40.927645],
+      [57.659721, 40.927625],
+      [57.659926, 40.927526],
+      [57.660567, 40.927565],
+      [57.660830, 40.927738],
+      [57.661142, 40.927671],
+      [57.661944, 40.928000],
+      [57.662264, 40.928002],
+      [57.662956, 40.927513],
+      [57.664174, 40.926826],
+      [57.664497, 40.926359],
+      [57.664647, 40.926014],
+      [57.665629, 40.925047],
+      [57.666517, 40.924781],
+      [57.666887, 40.924972],
+      [57.667485, 40.925033],
+      [57.667911, 40.924870],
+      [57.668129, 40.924719]
+    ];
+
+    const segment67 = [
+      [57.668129, 40.924719],
+      [57.667947, 40.927227],
+      [57.667921, 40.927505],
+      [57.667645, 40.929136],
+      [57.667588, 40.929592],
+      [57.667258, 40.931776],
+      [57.667212, 40.932419],
+      [57.666788, 40.935788],
+      [57.666248, 40.937161],
+      [57.665778, 40.938106],
+      [57.665548, 40.938599],
+      [57.665628, 40.939972],
+      [57.666340, 40.939844],
+      [57.666500, 40.940627]
+    ];
+
+    function joinSegments(...segments) {
+      const result = [];
+
+      segments.forEach((segment, segmentIndex) => {
+        segment.forEach((point, pointIndex) => {
+          if (segmentIndex > 0 && pointIndex === 0) return;
+          result.push(point);
+        });
+      });
+
+      return result;
+    }
+
+    const routePaths = {
+      route1: joinSegments(segment12),
+      route2: joinSegments(segment12, segment23),
+      route3: joinSegments(segment12, segment23, segment34),
+      route4: joinSegments(segment12, segment23, segment34, segment45),
+      route5: joinSegments(segment12, segment23, segment34, segment45, segment56),
+      route6: joinSegments(segment12, segment23, segment34, segment45, segment56, segment67)
+    };
+
+    const routeColors = {
+      route1: "#ef4444",
+      route2: "#f97316",
+      route3: "#eab308",
+      route4: "#22c55e",
+      route5: "#3b82f6",
+      route6: "#a855f7"
+    };
+
+    const routeNames = {
+      route1: "Маршрут №1 — 9 км",
+      route2: "Маршрут №2 — 12,5 км",
+      route3: "Маршрут №3 — 14,5 км",
+      route4: "Маршрут №4 — 23,5 км",
+      route5: "Маршрут №5 — 27,5 км",
+      route6: "Маршрут №6 — 30 км"
+    };
+
+    let map;
+    let checkpointObjects = {};
+    let routeObjects = {};
+    let userLocationObject = null;
+
+    const sidebar = document.getElementById("sidebar");
+    const mobileToggle = document.getElementById("mobileToggle");
+    const showAllBtn = document.getElementById("showAllBtn");
+    const locateBtn = document.getElementById("locateBtn");
+    const mapLocateBtn = document.getElementById("mapLocateBtn");
+    const cpList = document.getElementById("cpList");
+
+    if (typeof ymaps === "undefined") {
+      alert("Яндекс.Карты не загрузились. Проверьте API-ключ и интернет-соединение.");
+    } else {
+      ymaps.ready(initYandexMap);
+    }
+
+    function initYandexMap() {
+      map = new ymaps.Map(
+        "map",
+        {
+          center: [57.688, 40.916],
+          zoom: 11,
+          controls: ["zoomControl", "typeSelector", "fullscreenControl"]
+        },
+        {
+          suppressMapOpenBlock: true,
+          yandexMapDisablePoiInteractivity: false
+        }
+      );
+
+      if (isMobileLayout()) {
+        map.behaviors.disable("scrollZoom");
+      } else {
+        map.behaviors.enable("scrollZoom");
+      }
+
+      drawRoutes();
+      drawCheckpoints();
+      buildCheckpointList();
+      bindInterfaceEvents();
+      showAll();
+
+      setTimeout(() => {
+        map.container.fitToViewport();
+      }, 300);
+    }
+
+    function getBoundsFromPoints(points) {
+      let minLat = points[0][0];
+      let maxLat = points[0][0];
+      let minLng = points[0][1];
+      let maxLng = points[0][1];
+
+      points.forEach(point => {
+        minLat = Math.min(minLat, point[0]);
+        maxLat = Math.max(maxLat, point[0]);
+        minLng = Math.min(minLng, point[1]);
+        maxLng = Math.max(maxLng, point[1]);
+      });
+
+      return [
+        [minLat, minLng],
+        [maxLat, maxLng]
+      ];
+    }
+
+    function getAllMapCoordinates() {
+      const points = checkpoints.map(cp => [cp.lat, cp.lng]);
+
+      Object.values(routePaths).forEach(route => {
+        route.forEach(point => points.push(point));
+      });
+
+      return points;
+    }
+
+    function getZoomMargin() {
+      return isMobileLayout()
+        ? [42, 24, 150, 24]
+        : [60, 60, 60, 60];
+    }
+
+    function showAll() {
+      if (!map) return;
+
+      showAllRoutes();
+
+      const bounds = getBoundsFromPoints(getAllMapCoordinates());
+
+      map.setBounds(bounds, {
+        checkZoomRange: true,
+        duration: 300,
+        zoomMargin: getZoomMargin()
+      });
+
+      document.querySelectorAll(".route-item").forEach(item => {
+        item.classList.remove("active");
+      });
+    }
+
+    function drawRoutes() {
+      Object.keys(routePaths).forEach(routeKey => {
+        const routeLine = new ymaps.Polyline(
+          routePaths[routeKey],
+          {
+            balloonContent: routeNames[routeKey]
+          },
+          {
+            strokeColor: routeColors[routeKey],
+            strokeWidth: 5,
+            strokeOpacity: 0.82
+          }
+        );
+
+        routeObjects[routeKey] = routeLine;
+        map.geoObjects.add(routeLine);
+      });
+    }
+
+    function showAllRoutes() {
+      Object.values(routeObjects).forEach(route => {
+        map.geoObjects.remove(route);
+      });
+
+      Object.values(routeObjects).forEach(route => {
+        map.geoObjects.add(route);
+      });
+    }
+
+    function showOnlyRoute(routeKey) {
+      Object.values(routeObjects).forEach(route => {
+        map.geoObjects.remove(route);
+      });
+
+      map.geoObjects.add(routeObjects[routeKey]);
+
+      const bounds = getBoundsFromPoints(routePaths[routeKey]);
+
+      map.setBounds(bounds, {
+        checkZoomRange: true,
+        duration: 300,
+        zoomMargin: getZoomMargin()
+      });
+
+      document.querySelectorAll(".route-item").forEach(item => {
+        item.classList.toggle("active", item.dataset.route === routeKey);
+      });
+
+      if (isMobileLayout()) {
+        closePanel();
+      }
+    }
+
+    function drawCheckpoints() {
+      const CheckpointLayout = ymaps.templateLayoutFactory.createClass(
+        '<div class="cp-marker" style="width:$[properties.markerSize]px;height:$[properties.markerSize]px;background:$[properties.markerColor];">$[properties.iconContent]</div>'
+      );
+
+      checkpoints.forEach(cp => {
+        const isStart = cp.id === "КП-1";
+        const size = isStart ? 40 : 36;
+
+        const placemark = new ymaps.Placemark(
+          [cp.lat, cp.lng],
+          {
+            iconContent: cp.id.replace("КП-", ""),
+            markerColor: isStart ? "#111827" : "#2563eb",
+            markerSize: size,
+            balloonContent: `
+              <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                <div style="font-weight: 800; margin-bottom: 4px;">
+                  ${cp.id} — ${cp.title}
+                </div>
+                <div style="font-size: 14px; line-height: 1.4;">
+                  ${cp.description}
+                </div>
+                <div style="
+                  display: inline-block;
+                  margin-top: 7px;
+                  padding: 4px 8px;
+                  background: #eff6ff;
+                  color: #1d4ed8;
+                  border-radius: 999px;
+                  font-size: 12px;
+                  font-weight: 700;
+                ">
+                  Работает с 10:00 до 14:00
+                </div>
+                <div style="margin-top: 7px; color: #6b7280; font-size: 12px;">
+                  ${cp.lat}, ${cp.lng}
+                </div>
+              </div>
+            `
+          },
+          {
+            iconLayout: CheckpointLayout,
+            iconShape: {
+              type: "Circle",
+              coordinates: [0, 0],
+              radius: size / 2
+            },
+            zIndex: isStart ? 300 : 250
+          }
+        );
+
+        checkpointObjects[cp.id] = placemark;
+        map.geoObjects.add(placemark);
+      });
+    }
+
+    function buildCheckpointList() {
+      cpList.innerHTML = "";
+
+      checkpoints.forEach(cp => {
+        const item = document.createElement("div");
+        item.className = "cp-item";
+
+        item.innerHTML = `
+          <div class="cp-name">${cp.id} — ${cp.title}</div>
+          <div class="cp-desc">${cp.description}</div>
+          <div class="cp-coords">${cp.lat}, ${cp.lng}</div>
+        `;
+
+        item.addEventListener("click", () => {
+          focusCheckpoint(cp);
+        });
+
+        cpList.appendChild(item);
+      });
+    }
+
+    function focusCheckpoint(cp) {
+      if (!map) return;
+
+      map.setCenter([cp.lat, cp.lng], 16, {
+        duration: 300
+      });
+
+      const placemark = checkpointObjects[cp.id];
+
+      if (placemark) {
+        placemark.balloon.open();
+      }
+
+      if (isMobileLayout()) {
+        closePanel();
+      }
+    }
+
+    let lastToggleTap = 0;
+
+    function openPanel() {
+      sidebar.classList.add("open");
+      sidebar.classList.remove("full");
+
+      setTimeout(() => {
+        if (map) map.container.fitToViewport();
+      }, 260);
+    }
+
+    function closePanel() {
+      sidebar.classList.remove("open");
+      sidebar.classList.remove("full");
+
+      setTimeout(() => {
+        if (map) map.container.fitToViewport();
+      }, 260);
+    }
+
+    function togglePanel() {
+      sidebar.classList.toggle("open");
+      sidebar.classList.remove("full");
+
+      setTimeout(() => {
+        if (map) map.container.fitToViewport();
+      }, 260);
+    }
+
+    function toggleFullPanel() {
+      if (!isMobileLayout()) return;
+
+      sidebar.classList.add("open");
+      sidebar.classList.toggle("full");
+
+      setTimeout(() => {
+        if (map) map.container.fitToViewport();
+      }, 260);
+    }
+
+    mobileToggle.addEventListener("click", () => {
+      const now = Date.now();
+
+      if (now - lastToggleTap < 300) {
+        toggleFullPanel();
+      } else {
+        togglePanel();
+      }
+
+      lastToggleTap = now;
+    });
+
+    function bindInterfaceEvents() {
+      document.querySelectorAll(".route-item").forEach(item => {
+        item.addEventListener("click", () => {
+          const routeKey = item.dataset.route;
+          showOnlyRoute(routeKey);
+        });
+      });
+
+      showAllBtn.addEventListener("click", () => {
+        showAll();
+
+        if (isMobileLayout()) {
+          closePanel();
+        }
+      });
+
+      locateBtn.addEventListener("click", locateUser);
+      mapLocateBtn.addEventListener("click", locateUser);
+
+      map.events.add("click", function(e) {
+        const coords = e.get("coords");
+
+        console.log(
+          "Координаты точки:",
+          `[${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}]`
+        );
+
+        if (isMobileLayout()) {
+          closePanel();
+        }
+      });
+    }
+
+    function locateUser() {
+      if (!("geolocation" in navigator)) {
+        alert("Геолокация не поддерживается вашим устройством.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          if (userLocationObject) {
+            map.geoObjects.remove(userLocationObject);
+          }
+
+          userLocationObject = new ymaps.Placemark(
+            [lat, lng],
+            {
+              balloonContent: "Вы здесь"
+            },
+            {
+              preset: "islands#greenCircleDotIcon"
+            }
+          );
+
+          map.geoObjects.add(userLocationObject);
+
+          map.setCenter([lat, lng], 16, {
+            duration: 300
+          });
+
+          userLocationObject.balloon.open();
+
+          if (isMobileLayout()) {
+            closePanel();
+          }
+        },
+        error => {
+          let message = "Не удалось определить местоположение.";
+
+          if (error.code === 1) {
+            message = "Доступ к геолокации запрещён. Разрешите доступ к местоположению в настройках.";
+          }
+
+          if (error.code === 2) {
+            message = "Местоположение недоступно. Проверьте GPS или интернет.";
+          }
+
+          if (error.code === 3) {
+            message = "Истекло время ожидания геолокации. Попробуйте ещё раз.";
+          }
+
+          alert(message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    let resizeTimer = null;
+
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+
+      resizeTimer = setTimeout(() => {
+        setAppHeight();
+
+        if (map) {
+          map.container.fitToViewport();
+
+          if (!isMobileLayout()) {
+            showAll();
+          }
+        }
+      }, 180);
+    });
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+
+        resizeTimer = setTimeout(() => {
+          setAppHeight();
+
+          if (map) {
+            map.container.fitToViewport();
+          }
+        }, 180);
+      });
+    }
+  </script>
+</body>
+</html>
