@@ -39,12 +39,17 @@
       overscroll-behavior: none;
       -webkit-text-size-adjust: 100%;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
+    }
+
+    /* Для миниаппов отключаем лишние жесты */
+    .miniapp body {
+      touch-action: none !important;
     }
 
     body {
       position: fixed;
       inset: 0;
+      touch-action: manipulation;
     }
 
     .app {
@@ -108,6 +113,11 @@
       font-size: 15px;
       font-weight: 700;
       cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .main-btn:active {
+      opacity: 0.7;
     }
 
     .main-btn.secondary {
@@ -136,10 +146,12 @@
       font-size: 13px;
       cursor: pointer;
       transition: 0.2s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .route-item:hover {
-      opacity: 0.75;
+    .route-item:active {
+      opacity: 0.6;
     }
 
     .route-item.active {
@@ -166,11 +178,14 @@
       background: #ffffff;
       cursor: pointer;
       transition: 0.2s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .cp-item:hover {
-      background: #f9fafb;
+    .cp-item:active {
+      background: #f3f4f6;
       border-color: #2563eb;
+      transform: scale(0.98);
     }
 
     .cp-name {
@@ -201,6 +216,11 @@
       color: #ffffff;
       text-decoration: none;
       font-weight: 700;
+      transition: opacity 0.2s;
+    }
+
+    .poster-link:active {
+      opacity: 0.7;
     }
 
     .note {
@@ -213,6 +233,7 @@
     #map {
       width: 100%;
       height: var(--app-height);
+      min-height: 400px;
       min-height: var(--app-height);
     }
 
@@ -235,6 +256,11 @@
       font-weight: 800;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
       cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .map-locate-btn:active {
+      transform: scale(0.92);
     }
 
     .cp-marker {
@@ -249,6 +275,7 @@
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
       transform: translate(-50%, -50%);
       user-select: none;
+      pointer-events: none;
     }
 
     @media (max-width: 900px), (pointer: coarse) {
@@ -263,6 +290,7 @@
         inset: 0;
         width: 100%;
         height: var(--app-height);
+        min-height: var(--app-height);
       }
 
       .sidebar {
@@ -313,6 +341,7 @@
         border: none;
         background: transparent;
         cursor: pointer;
+        touch-action: none;
       }
 
       .mobile-toggle::before {
@@ -321,6 +350,11 @@
         height: 5px;
         border-radius: 999px;
         background: #d1d5db;
+        transition: background 0.2s;
+      }
+
+      .mobile-toggle:active::before {
+        background: #9ca3af;
       }
 
       .sidebar h1 {
@@ -515,6 +549,9 @@
   <script src="https://api-maps.yandex.ru/2.1/?apikey=8d9d84a6-806a-4e88-8dd5-3bb3eda9a494&lang=ru_RU"></script>
 
   <script>
+    // Глобальный флаг готовности SDK
+    window.__yandexMapsReady = false;
+
     function setAppHeight() {
       const height = window.visualViewport
         ? window.visualViewport.height
@@ -841,6 +878,9 @@
     let checkpointObjects = {};
     let routeObjects = {};
     let userLocationObject = null;
+    let routesAdded = false;
+    let checkpointsAdded = false;
+    let initialViewShown = false;
 
     const sidebar = document.getElementById("sidebar");
     const mobileToggle = document.getElementById("mobileToggle");
@@ -852,11 +892,13 @@
     if (typeof ymaps === "undefined") {
       alert("Яндекс.Карты не загрузились. Проверьте API-ключ и интернет-соединение.");
     } else {
-      ymaps.ready(initYandexMap);
+      ymaps.ready(function() {
+        window.__yandexMapsReady = true;
+        initYandexMap();
+      });
     }
 
     function initYandexMap() {
-      // Используем центр Костромы с увеличенным зумом
       map = new ymaps.Map(
         "map",
         {
@@ -881,13 +923,26 @@
       buildCheckpointList();
       bindInterfaceEvents();
 
-      // Показываем все маршруты с правильным масштабом
-      setTimeout(() => {
+      // Запускаем проверку готовности
+      tryShowInitialView();
+    }
+
+    function tryShowInitialView() {
+      if (initialViewShown) return;
+      if (!window.__yandexMapsReady) return;
+      if (!routesAdded || !checkpointsAdded) return;
+
+      initialViewShown = true;
+
+      // Используем requestAnimationFrame для синхронизации с рендерингом
+      requestAnimationFrame(function() {
         showAll();
-      }, 200);
+      });
     }
 
     function getBoundsFromPoints(points) {
+      if (!points || points.length < 2) return null;
+
       let minLat = points[0][0];
       let maxLat = points[0][0];
       let minLng = points[0][1];
@@ -900,9 +955,13 @@
         maxLng = Math.max(maxLng, point[1]);
       });
 
+      // Добавляем небольшой отступ
+      const latMargin = (maxLat - minLat) * 0.05 + 0.02;
+      const lngMargin = (maxLng - minLng) * 0.05 + 0.02;
+
       return [
-        [minLat - 0.03, minLng - 0.03],
-        [maxLat + 0.03, maxLng + 0.03]
+        [minLat - latMargin, minLng - lngMargin],
+        [maxLat + latMargin, maxLng + lngMargin]
       ];
     }
 
@@ -928,16 +987,19 @@
       const allPoints = getAllMapCoordinates();
       const bounds = getBoundsFromPoints(allPoints);
 
-      // Проверяем, что границы корректны
-      if (bounds && bounds.length === 2) {
+      // Проверяем валидность границ
+      if (bounds && 
+          bounds.length === 2 && 
+          bounds[0][0] !== bounds[1][0] && 
+          bounds[0][1] !== bounds[1][1]) {
         map.setBounds(bounds, {
           checkZoomRange: true,
           duration: 400,
           zoomMargin: getZoomMargin()
         });
       } else {
-        // Если границы не определены, используем центр с зумом 12
-        map.setCenter([57.688, 40.916], 12, {
+        // Фолбэк: используем центр Костромы с зумом 13
+        map.setCenter([57.688, 40.916], 13, {
           duration: 400
         });
       }
@@ -963,6 +1025,14 @@
 
         routeObjects[routeKey] = routeLine;
         map.geoObjects.add(routeLine);
+
+        // Отслеживаем добавление первого маршрута
+        if (!routesAdded) {
+          routeLine.events.add('add', function() {
+            routesAdded = true;
+            tryShowInitialView();
+          });
+        }
       });
     }
 
@@ -985,11 +1055,20 @@
 
       const bounds = getBoundsFromPoints(routePaths[routeKey]);
 
-      map.setBounds(bounds, {
-        checkZoomRange: true,
-        duration: 300,
-        zoomMargin: getZoomMargin()
-      });
+      if (bounds && 
+          bounds.length === 2 && 
+          bounds[0][0] !== bounds[1][0] && 
+          bounds[0][1] !== bounds[1][1]) {
+        map.setBounds(bounds, {
+          checkZoomRange: true,
+          duration: 300,
+          zoomMargin: getZoomMargin()
+        });
+      } else {
+        map.setCenter([57.688, 40.916], 13, {
+          duration: 300
+        });
+      }
 
       document.querySelectorAll(".route-item").forEach(item => {
         item.classList.toggle("active", item.dataset.route === routeKey);
@@ -1054,6 +1133,14 @@
 
         checkpointObjects[cp.id] = placemark;
         map.geoObjects.add(placemark);
+
+        // Отслеживаем добавление первой метки
+        if (!checkpointsAdded) {
+          placemark.events.add('add', function() {
+            checkpointsAdded = true;
+            tryShowInitialView();
+          });
+        }
       });
     }
 
@@ -1070,7 +1157,7 @@
           <div class="cp-coords">${cp.lat}, ${cp.lng}</div>
         `;
 
-        item.addEventListener("click", () => {
+        item.addEventListener("click", function() {
           focusCheckpoint(cp);
         });
 
@@ -1101,28 +1188,16 @@
     function openPanel() {
       sidebar.classList.add("open");
       sidebar.classList.remove("full");
-
-      setTimeout(() => {
-        if (map) map.container.fitToViewport();
-      }, 260);
     }
 
     function closePanel() {
       sidebar.classList.remove("open");
       sidebar.classList.remove("full");
-
-      setTimeout(() => {
-        if (map) map.container.fitToViewport();
-      }, 260);
     }
 
     function togglePanel() {
       sidebar.classList.toggle("open");
       sidebar.classList.remove("full");
-
-      setTimeout(() => {
-        if (map) map.container.fitToViewport();
-      }, 260);
     }
 
     function toggleFullPanel() {
@@ -1130,13 +1205,9 @@
 
       sidebar.classList.add("open");
       sidebar.classList.toggle("full");
-
-      setTimeout(() => {
-        if (map) map.container.fitToViewport();
-      }, 260);
     }
 
-    mobileToggle.addEventListener("click", () => {
+    mobileToggle.addEventListener("click", function() {
       const now = Date.now();
 
       if (now - lastToggleTap < 300) {
@@ -1148,15 +1219,22 @@
       lastToggleTap = now;
     });
 
+    // Событие завершения анимации для пересчета размеров карты
+    sidebar.addEventListener('transitionend', function(e) {
+      if (e.propertyName === 'transform' && map) {
+        map.container.fitToViewport();
+      }
+    });
+
     function bindInterfaceEvents() {
       document.querySelectorAll(".route-item").forEach(item => {
-        item.addEventListener("click", () => {
-          const routeKey = item.dataset.route;
+        item.addEventListener("click", function() {
+          const routeKey = this.dataset.route;
           showOnlyRoute(routeKey);
         });
       });
 
-      showAllBtn.addEventListener("click", () => {
+      showAllBtn.addEventListener("click", function() {
         showAll();
 
         if (isMobileLayout()) {
@@ -1188,7 +1266,7 @@
       }
 
       navigator.geolocation.getCurrentPosition(
-        position => {
+        function(position) {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
 
@@ -1218,7 +1296,7 @@
             closePanel();
           }
         },
-        error => {
+        function(error) {
           let message = "Не удалось определить местоположение.";
 
           if (error.code === 1) {
@@ -1245,10 +1323,10 @@
 
     let resizeTimer = null;
 
-    window.addEventListener("resize", () => {
+    window.addEventListener("resize", function() {
       clearTimeout(resizeTimer);
 
-      resizeTimer = setTimeout(() => {
+      resizeTimer = setTimeout(function() {
         setAppHeight();
 
         if (map) {
@@ -1258,10 +1336,10 @@
     });
 
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", () => {
+      window.visualViewport.addEventListener("resize", function() {
         clearTimeout(resizeTimer);
 
-        resizeTimer = setTimeout(() => {
+        resizeTimer = setTimeout(function() {
           setAppHeight();
 
           if (map) {
